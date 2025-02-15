@@ -9,6 +9,7 @@ from src.config.crop_config import CropConfig
 from src.live_portrait_pipeline import LivePortraitPipeline
 
 from expdataloader import HeadGenLoader
+from expdataloader.utils import extract_all_frames, get_sub_dir
 
 
 def partial_fields(target_class, kwargs):
@@ -29,6 +30,7 @@ def fast_check_args(args: ArgumentConfig):
     if not osp.exists(args.driving):
         raise FileNotFoundError(f"driving info not found: {args.driving}")
 
+
 def get_args():
     # set tyro theme
     tyro.extras.set_accent_color("bright_cyan")
@@ -46,17 +48,23 @@ def get_args():
     fast_check_args(args)
     return args
 
+
 def basename(filename):
     """a/b/c.jpg -> c"""
     return os.path.splitext(os.path.basename(filename))[0]
 
+
 class LivePortraitLoader(HeadGenLoader):
-    args = get_args()
-    inference_cfg = partial_fields(InferenceConfig, args.__dict__)
-    crop_cfg = partial_fields(CropConfig, args.__dict__)
-    live_portrait_pipeline = LivePortraitPipeline(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
-    def __init__(self):
-        super().__init__("LivePortrait")
+    def __init__(self, args=None, flags=[]):
+        if args is None:
+            args = get_args()
+        inference_cfg = partial_fields(InferenceConfig, args.__dict__)
+        crop_cfg = partial_fields(CropConfig, args.__dict__)
+        self.live_portrait_pipeline = LivePortraitPipeline(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
+        self.args = args
+
+        flags = ["LivePortrait"] + flags
+        super().__init__("+".join(flags))
 
     def run_video(self, row):
         args = self.args
@@ -64,12 +72,40 @@ class LivePortraitLoader(HeadGenLoader):
         args.driving = row.target_video_path
         args.output_dir = row.output_dir
         self.live_portrait_pipeline.execute(args)
-        ori_output_video_path = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}.mp4')
+        ori_output_video_path = osp.join(args.output_dir, f"{basename(args.source)}--{basename(args.driving)}.mp4")
         shutil.copy(ori_output_video_path, row.output_video_path)
+        extract_all_frames(row.output_video_path, get_sub_dir(row.output_dir, "frames"))
+        shutil.copy(row.output_video_path, row.fast_review_video_path)
+
+    def run_test(self):
+        test_row = [
+            "Clip+RUcLuQ17UV8+P0+C1+F29582-29745",
+            "Clip+WDN72QkW5KQ+P3+C0+F95232-95342"
+        ]
+        for row_name in test_row:
+            row = self.all_data_rows_dict[row_name]
+            self.exp_data_row(row)
+
+def no_relative_motion():
+    args = get_args()
+    args.flag_relative_motion = False
+    loader = LivePortraitLoader(args, ["no_relative_motion"])
+    loader.run_all()
+    # row = loader.all_data_rows[21]
+    # loader.run_video(row)
+
+
+def no_stitching_and_crop():
+    args = get_args()
+    args.flag_stitching = False
+    args.flag_do_crop = False
+    loader = LivePortraitLoader(args, ["no_stitching", "no_crop"])
+    loader.run_all()
+
 
 def main():
-    loader = LivePortraitLoader()
-    loader.run_all()
+    no_stitching_and_crop()
+
 
 if __name__ == "__main__":
     main()
