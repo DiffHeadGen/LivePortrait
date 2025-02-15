@@ -77,14 +77,6 @@ class LivePortraitLoader(HeadGenLoader):
         extract_all_frames(row.output_video_path, get_sub_dir(row.output_dir, "frames"))
         shutil.copy(row.output_video_path, row.fast_review_video_path)
 
-    def run_test(self):
-        test_row = [
-            "Clip+RUcLuQ17UV8+P0+C1+F29582-29745",
-            "Clip+WDN72QkW5KQ+P3+C0+F95232-95342"
-        ]
-        for row_name in test_row:
-            row = self.all_data_rows_dict[row_name]
-            self.exp_data_row(row)
 
 def no_relative_motion():
     args = get_args()
