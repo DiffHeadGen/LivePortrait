@@ -1,7 +1,7 @@
 ml cuDNN/8.7.0.84-CUDA-11.8.0
 
 conda deactivate
-conda env remove -n liveportrait -y
+# conda env remove -n liveportrait -y
 conda create -n liveportrait python=3.10 -y
 conda activate liveportrait
 conda install -c conda-forge ffmpeg -y

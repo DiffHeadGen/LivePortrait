@@ -8,7 +8,7 @@ from src.config.inference_config import InferenceConfig
 from src.config.crop_config import CropConfig
 from src.live_portrait_pipeline import LivePortraitPipeline
 
-from expdataloader import HeadGenLoader
+from expdataloader import *
 from expdataloader.utils import extract_all_frames, get_sub_dir
 
 
@@ -54,7 +54,7 @@ def basename(filename):
     return os.path.splitext(os.path.basename(filename))[0]
 
 
-class LivePortraitLoader(HeadGenLoader):
+class LivePortraitLoader(RowDataLoader):
     def __init__(self, args=None, flags=[]):
         if args is None:
             args = get_args()
@@ -69,13 +69,12 @@ class LivePortraitLoader(HeadGenLoader):
     def run_video(self, row):
         args = self.args
         args.source = row.source_img_path
-        args.driving = row.target_video_path
+        args.driving = row.target.video_path
         args.output_dir = row.output_dir
         self.live_portrait_pipeline.execute(args)
         ori_output_video_path = osp.join(args.output_dir, f"{basename(args.source)}--{basename(args.driving)}.mp4")
         shutil.copy(ori_output_video_path, row.output_video_path)
-        extract_all_frames(row.output_video_path, get_sub_dir(row.output_dir, "frames"))
-        shutil.copy(row.output_video_path, row.fast_review_video_path)
+        row.output.human()
 
 
 def no_relative_motion():
@@ -91,8 +90,10 @@ def no_stitching_and_crop():
     args = get_args()
     args.flag_stitching = False
     args.flag_do_crop = False
-    loader = LivePortraitLoader(args, ["no_stitching", "no_crop"])
-    loader.run_all()
+    args.flag_relative_motion = False
+    loader = LivePortraitLoader(args, ["no_stitching", "no_crop", "no_relative_motion"])
+    # loader.run_all()
+    loader.test_20250218()
 
 
 def main():
